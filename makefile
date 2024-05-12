@@ -9,8 +9,5 @@ compile: $(ASM_SRC)
 execute: $(BIN_OUT)
 	qemu-system-i386 $(BIN_OUT)
 
-# make a command called run to compile and execute the file
-run: compile execute
-
 clean:
 	rm $(BIN_OUT)

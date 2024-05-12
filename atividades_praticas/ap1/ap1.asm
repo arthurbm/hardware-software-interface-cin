@@ -45,14 +45,15 @@ is_vowel:
     ; Verificar se o caractere em AL é uma vogal
     mov ah, al
     or al, 20h ; Converter para minúsculo
-    sub al, 'a'
-    cmp al, 5
+    cmp al, 'a'
     je .is_vowel
-    sub al, 6
-    cmp al, 8
+    cmp al, 'e'
     je .is_vowel
-    sub al, 4
-    cmp al, 2
+    cmp al, 'i'
+    je .is_vowel
+    cmp al, 'o'
+    je .is_vowel
+    cmp al, 'u'
     je .is_vowel
     xor ax, ax
     ret

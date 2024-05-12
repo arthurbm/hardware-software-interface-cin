@@ -1,13 +1,18 @@
-ASM_SRC = $(file).asm
-BIN_OUT = $(file).bin
+# Determine the absolute path to the root directory
+ROOT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 
+# Targets
 all: compile execute
 
-compile: $(ASM_SRC)
-	nasm $(ASM_SRC) -o $(BIN_OUT)
+# Compile target
+compile:
+	nasm "$(ROOT_DIR)/$(file).asm" -o "$(ROOT_DIR)/$(file).bin"
 
-execute: $(BIN_OUT)
-	qemu-system-i386 $(BIN_OUT)
+# Execute target
+execute:
+	qemu-system-i386 "$(ROOT_DIR)/$(file).bin"
 
+# Clean target
 clean:
-	rm $(BIN_OUT)
+	rm -f "$(ROOT_DIR)/provas"/*/*.bin
+	rm -f "$(ROOT_DIR)/atividades_praticas"/*/*.bin

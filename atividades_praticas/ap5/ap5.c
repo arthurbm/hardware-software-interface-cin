@@ -6,21 +6,21 @@
 #define N 1000 // Define a ordem das matrizes
 
 int** allocate_matrix(int rows, int cols) {
+    int* data = (int*)malloc(rows * cols * sizeof(int));
     int** matrix = (int**)malloc(rows * sizeof(int*));
     for (int i = 0; i < rows; i++) {
-        matrix[i] = (int*)malloc(cols * sizeof(int));
+        matrix[i] = &(data[cols * i]);
     }
     return matrix;
 }
 
-void free_matrix(int** matrix, int rows) {
-    for (int i = 0; i < rows; i++) {
-        free(matrix[i]);
-    }
+void free_matrix(int** matrix) {
+    free(matrix[0]);
     free(matrix);
 }
 
 void initialize_matrices(int** A, int** B, int rows, int cols) {
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             A[i][j] = rand() % 100;
@@ -33,11 +33,12 @@ void multiply_matrices_serial(int** A, int** B, int** C, int rows, int cols, int
     *even_count = 0;
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            C[i][j] = 0;
+            int sum = 0;
             for (int k = 0; k < cols; k++) {
-                C[i][j] += A[i][k] * B[k][j];
+                sum += A[i][k] * B[k][j];
             }
-            if (C[i][j] % 2 == 0) {
+            C[i][j] = sum;
+            if (sum % 2 == 0) {
                 (*even_count)++;
             }
         }
@@ -46,14 +47,15 @@ void multiply_matrices_serial(int** A, int** B, int** C, int rows, int cols, int
 
 void multiply_matrices_parallel(int** A, int** B, int** C, int rows, int cols, int* even_count) {
     int local_even_count = 0;
-    #pragma omp parallel for reduction(+:local_even_count)
+    #pragma omp parallel for collapse(2) reduction(+:local_even_count)
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            C[i][j] = 0;
+            int sum = 0;
             for (int k = 0; k < cols; k++) {
-                C[i][j] += A[i][k] * B[k][j];
+                sum += A[i][k] * B[k][j];
             }
-            if (C[i][j] % 2 == 0) {
+            C[i][j] = sum;
+            if (sum % 2 == 0) {
                 local_even_count++;
             }
         }
@@ -69,7 +71,11 @@ int main() {
     double start, end;
 
     srand(time(NULL));
+    
+    start = omp_get_wtime();
     initialize_matrices(A, B, N, N);
+    end = omp_get_wtime();
+    printf("Tempo de inicialização das matrizes: %f segundos\n\n", end - start);
 
     // Multiplicação serial
     start = omp_get_wtime();
@@ -86,9 +92,9 @@ int main() {
     printf("Quantidade de elementos pares na matriz resultado (paralelo): %d\n", even_count_parallel);
 
     // Liberar a memória alocada
-    free_matrix(A, N);
-    free_matrix(B, N);
-    free_matrix(C, N);
+    free_matrix(A);
+    free_matrix(B);
+    free_matrix(C);
 
     return 0;
 }

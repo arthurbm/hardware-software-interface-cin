@@ -1,102 +1,74 @@
-; comentarios
+; diretivas para o assembler
+org 0x7C00
+bits 16
+jmp start
 
-ORG 0x7C00
-BITS 16
-    jmp start
+; Dados
+buffer times 256 db 0   ; Buffer para armazenar a string digitada
+prompt db "Digite uma string: ", 0
+newline db 0x0D, 0x0A, 0
 
-msgInicial: db "Digite seu texto abaixo:", 0x0D, 0x0A, 0 
-msg: times 50 db 0
-msgFinal: db "FIM",0x0D, 0x0A, 0 
-
+; inicio do programa
 start:
-
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-
-;; configurando a ivt
+    ; Configurar a interrupção 40h
+    cli  ; Desabilita interrupções
     push ds
     xor ax, ax
     mov ds, ax
-
-    mov di, 0x100 ;; 40h x 4 bytes por cada
-    mov word[di], print_string
-    mov word[di+2], 0
-
+    mov word [40h*4], print_string  ; Offset da rotina
+    mov word [40h*4+2], 0  ; Segmento (assumindo que estamos no segmento 0)
     pop ds
+    sti  ; Habilita interrupções
 
-    mov ax, msgInicial
-    push ax
-    int 0x40
-    call get_keyboard_input 
-    ; pular linha
-    mov ah, 0x0E
-    mov al, 0x0D
-    int 0x10
-    mov al, 0x0A
-    int 0x10
+    ; Imprimir prompt
+    mov si, prompt
+    call print_string
 
-    mov ax, msg
-    push ax
-    int 0x40
-    ; pular linha
-    mov ah, 0x0E
-    mov al, 0x0D
-    int 0x10
-    mov al, 0x0A
-    int 0x10
+    ; Ler string do teclado
+    mov di, buffer
+    call get_keyboard_input
 
-    mov ax, msgFinal
-    push ax
-    int 0x40
+    ; Chamar a interrupção 40h para imprimir a string
+    push buffer
+    int 40h
+    add sp, 2
 
-end:
-    jmp $ ; halt
+    ; Fim do programa
+    jmp $
 
-
+; Funções
 get_keyboard_input:
-    pusha
-    mov si, msg ; usar msg como ponteiro para a string
-    xor cx, cx ; contador para tamanho máximo da string
+    xor cx, cx  ; Contador de caracteres
 .loop:
-    mov ah, 0x00
-    int 0x16
-    ;; char lido vai estar em al
-    cmp al, 0x0D
+    mov ah, 0
+    int 16h  ; Espera por um caractere do teclado
+    cmp al, 0x0D  ; Verifica se é Enter
     je .done
+    mov [di], al  ; Armazena o caractere no buffer
+    inc di
+    inc cx
     mov ah, 0x0E
-    int 0x10
-    mov [si], al ; salvar o caractere na variável msg
-    inc si ; avançar para o próximo byte na variável msg
-    inc cx ; incrementar o contador
-    cmp cx, 50 ; verificar se alcançou o tamanho máximo da string
-    je .done
+    int 10h  ; Exibe o caractere digitado
     jmp .loop
 .done:
-    popa
+    mov byte [di], 0  ; Adiciona terminador nulo
+    mov si, newline
+    call print_string  ; Imprime nova linha
     ret
 
-
 print_string:
-    pusha ; salvar todos os registradores
-
-    mov si, ax ; usar ax como ponteiro para a string
+    pusha
     mov ah, 0x0E
-
 .loop:
     lodsb
     or al, al
     jz .done
-    int 0x10
+    int 10h
     jmp .loop
-
 .done:
-    popa ; restaurar todos os registradores
-    retf ; retornar da interrupção
+    popa
+    iret
 
-
-; assinatura de boot
-
-    times 510-($-$$) db 0
-    dw 0xAA55
+; Assinatura do boot sector
+times 510-($-$$) db 0
+dw 0xAA55

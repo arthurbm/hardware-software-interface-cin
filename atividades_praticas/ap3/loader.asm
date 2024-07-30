@@ -79,31 +79,35 @@ DATA_SEG equ gdt_data - gdt_start
 bits 32
 
 boot2:
-	; now, initial stack to data segment
-	mov ax, DATA_SEG
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-	mov ss, ax
-	mov esi,hello
-	mov ebx,0xb8000
+    ; Set up segment registers
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    
+    ; Set up stack
+    mov esp, 0x90000
+
+    ; Print "hello protected mode!"
+    mov esi, hello
+    mov edi, 0xb8000
+    mov ah, 0x0F ; White text on black background
 
 ; Note that, since we are in protected mode, we cannot call BIOS INT any more. 
 ; Instead, we feed ASCII to buffer, which is [ebx]
 .loop:
-	lodsb 				; load string byte from [DS:SI] into AL
-	or al,al			; 
-	jz halt 			; the above two lines => jump if AL==0. Equivalent to CMP AL; JE halt
-	or eax,0x0100 		; config text color to be 1 (blue)  [4bit bg color][4bit text color][8bit ascii]
-						; more color info can be found in https://en.wikipedia.org/wiki/Video_Graphics_Array#Color_palette
-	mov word [ebx], ax	; feed ASCII and color to buffer in memory
-	add ebx,2 			; increase ebx by two bytes (1byte for color, 1byte for ASCII)
+	lodsb
+	or al, al
+	jz halt
+	mov [edi], ax
+	add edi, 2
 	jmp .loop
 halt:
 	cli
 	hlt
-hello: db "Hello world!",0
+hello: db "hello protected mode!", 0
 
 times 510 - ($-$$) db 0
 dw 0xaa55
